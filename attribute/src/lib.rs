@@ -57,6 +57,11 @@ pub fn trace(args: TokenStream, item: TokenStream) -> TokenStream {
         #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #return_type
         #where_clause
         {
+            for _ in 0..100 {
+                let __child_span = minitrace::new_span(#tag as u32);
+                let __child_g = __child_span.enter();
+            }
+
             let __tracer_span = minitrace::new_span(#tag as u32);
             #body
         }
