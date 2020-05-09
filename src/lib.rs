@@ -10,6 +10,7 @@ pub use span_id::SpanID;
 
 pub const DEFAULT_COLLECTOR: CollectorType = CollectorType::Channel;
 
+#[derive(Debug)]
 pub struct Span {
     pub id: SpanID,
     pub parent: Option<SpanID>,
