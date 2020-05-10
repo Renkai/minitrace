@@ -3,7 +3,7 @@ pub mod future;
 mod span_id;
 pub mod util;
 pub mod time;
-pub use minitrace_attribute::trace;
+pub use minitrace_attribute::{trace, trace_heavy};
 
 pub use collector::*;
 pub use span_id::SpanID;

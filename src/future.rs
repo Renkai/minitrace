@@ -18,7 +18,35 @@ pub trait Instrument: Sized {
         }
     }
 
+    fn instrument_heavy(self, span: crate::SpanGuard) -> Instrumented<Self> {
+        let tag = span.info.tag;
+
+        for _ in 0..100 {
+            let __child_span = crate::new_span(tag);
+            let __child_g = __child_span.enter();
+        }
+
+        Instrumented {
+            inner: self,
+            span: crate::OSpanGuard(Some(span)),
+        }
+    }
+
     fn in_current_span<T: Into<u32>>(self, tag: T) -> Instrumented<Self> {
+        Instrumented {
+            inner: self,
+            span: crate::new_span(tag),
+        }
+    }
+
+    fn in_current_span_heavy<T: Into<u32>>(self, tag: T) -> Instrumented<Self> {
+        let tag = tag.into();
+
+        for _ in 0..100 {
+            let __child_span = crate::new_span(tag);
+            let __child_g = __child_span.enter();
+        }
+
         Instrumented {
             inner: self,
             span: crate::new_span(tag),
