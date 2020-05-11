@@ -3,6 +3,7 @@ pub mod future;
 mod span_id;
 pub mod time;
 pub mod util;
+
 pub use minitrace_attribute::trace;
 
 pub use collector::*;
@@ -23,20 +24,23 @@ thread_local! {
 }
 
 #[inline]
-pub fn new_span_root<T: Into<u32>>(tx: CollectorTx, tag: T) -> SpanGuard {
+pub fn new_span_root<T: Into<u32>>(tx: CollectorTx, tag: T) -> OSpanGuard {
     let root_time = time::Instant::now_coarse();
     let info = SpanInfo {
         id: SpanID::new(),
         parent: None,
         tag: tag.into(),
     };
-
-    SpanGuard {
+    OSpanGuard(Some(SpanGuard {
         root_time,
         elapsed_start: 0u32,
         tx,
         info,
-    }
+    }))
+}
+
+pub fn none() -> OSpanGuard {
+    OSpanGuard(None)
 }
 
 #[inline]
