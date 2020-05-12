@@ -20,18 +20,18 @@ pub struct Span {
 }
 
 thread_local! {
-    static SPAN_STACK: std::cell::UnsafeCell<Vec<&'static SpanGuard>> = std::cell::UnsafeCell::new(Vec::with_capacity(1024));
+    static SPAN_STACK: std::cell::UnsafeCell<Vec<&'static SpanGuardInner>> = std::cell::UnsafeCell::new(Vec::with_capacity(1024));
 }
 
 #[inline]
-pub fn new_span_root<T: Into<u32>>(tx: CollectorTx, tag: T) -> OSpanGuard {
+pub fn new_span_root<T: Into<u32>>(tx: CollectorTx, tag: T) -> SpanGuard {
     let root_time = time::Instant::now_coarse();
     let info = SpanInfo {
         id: SpanID::new(),
         parent: None,
         tag: tag.into(),
     };
-    OSpanGuard(Some(SpanGuard {
+    SpanGuard(Some(SpanGuardInner {
         root_time,
         elapsed_start: 0u32,
         tx,
@@ -39,12 +39,12 @@ pub fn new_span_root<T: Into<u32>>(tx: CollectorTx, tag: T) -> OSpanGuard {
     }))
 }
 
-pub fn none() -> OSpanGuard {
-    OSpanGuard(None)
+pub fn none() -> SpanGuard {
+    SpanGuard(None)
 }
 
 #[inline]
-pub fn new_span<T: Into<u32>>(tag: T) -> OSpanGuard {
+pub fn new_span<T: Into<u32>>(tag: T) -> SpanGuard {
     if let Some(parent) = SPAN_STACK.with(|spans| unsafe {
         let spans = &*spans.get();
         spans.last()
@@ -58,18 +58,18 @@ pub fn new_span<T: Into<u32>>(tag: T) -> OSpanGuard {
             tag: tag.into(),
         };
 
-        OSpanGuard(Some(SpanGuard {
+        SpanGuard(Some(SpanGuardInner {
             root_time,
             elapsed_start: time::duration_to_ms(root_time.elapsed()),
             tx,
             info,
         }))
     } else {
-        OSpanGuard(None)
+        SpanGuard(None)
     }
 }
 
-pub struct SpanGuard {
+pub struct SpanGuardInner {
     root_time: time::Instant,
     info: SpanInfo,
     elapsed_start: u32,
@@ -82,14 +82,14 @@ struct SpanInfo {
     tag: u32,
 }
 
-impl SpanGuard {
+impl SpanGuardInner {
     #[inline]
     pub fn enter(&self) -> Entered<'_> {
         Entered::new(self)
     }
 }
 
-impl Drop for SpanGuard {
+impl Drop for SpanGuardInner {
     fn drop(&mut self) {
         self.tx.push(Span {
             id: self.info.id,
@@ -101,9 +101,9 @@ impl Drop for SpanGuard {
     }
 }
 
-pub struct OSpanGuard(Option<SpanGuard>);
+pub struct SpanGuard(Option<SpanGuardInner>);
 
-impl OSpanGuard {
+impl SpanGuard {
     #[inline]
     pub fn enter(&self) -> Option<Entered<'_>> {
         self.0.as_ref().map(|s| s.enter())
@@ -111,11 +111,11 @@ impl OSpanGuard {
 }
 
 pub struct Entered<'a> {
-    guard: &'a SpanGuard,
+    guard: &'a SpanGuardInner,
 }
 
 impl<'a> Entered<'a> {
-    fn new(span_guard: &'a SpanGuard) -> Self {
+    fn new(span_guard: &'a SpanGuardInner) -> Self {
         SPAN_STACK
             .with(|spans| unsafe { (&mut *spans.get()).push(std::mem::transmute(span_guard)) });
         Entered { guard: span_guard }
