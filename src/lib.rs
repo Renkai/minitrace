@@ -20,7 +20,7 @@ pub struct Span {
 }
 
 thread_local! {
-    static SPAN_STACK: std::cell::UnsafeCell<Vec<&'static SpanGuardInner>> = std::cell::UnsafeCell::new(Vec::with_capacity(1024));
+    static SPAN_STACK: std::cell::UnsafeCell<Vec<&'static GuardInner>> = std::cell::UnsafeCell::new(Vec::with_capacity(1024));
 }
 
 #[inline]
@@ -31,7 +31,7 @@ pub fn new_span_root<T: Into<u32>>(tx: CollectorTx, tag: T) -> SpanGuard {
         parent: None,
         tag: tag.into(),
     };
-    SpanGuard(Some(SpanGuardInner {
+    SpanGuard(Some(GuardInner {
         root_time,
         elapsed_start: 0u32,
         tx,
@@ -58,7 +58,7 @@ pub fn new_span<T: Into<u32>>(tag: T) -> SpanGuard {
             tag: tag.into(),
         };
 
-        SpanGuard(Some(SpanGuardInner {
+        SpanGuard(Some(GuardInner {
             root_time,
             elapsed_start: time::duration_to_ms(root_time.elapsed()),
             tx,
@@ -69,7 +69,7 @@ pub fn new_span<T: Into<u32>>(tag: T) -> SpanGuard {
     }
 }
 
-pub struct SpanGuardInner {
+pub struct GuardInner {
     root_time: time::Instant,
     info: SpanInfo,
     elapsed_start: u32,
@@ -82,14 +82,14 @@ struct SpanInfo {
     tag: u32,
 }
 
-impl SpanGuardInner {
+impl GuardInner {
     #[inline]
     pub fn enter(&self) -> Entered<'_> {
         Entered::new(self)
     }
 }
 
-impl Drop for SpanGuardInner {
+impl Drop for GuardInner {
     fn drop(&mut self) {
         self.tx.push(Span {
             id: self.info.id,
@@ -101,7 +101,7 @@ impl Drop for SpanGuardInner {
     }
 }
 
-pub struct SpanGuard(Option<SpanGuardInner>);
+pub struct SpanGuard(Option<GuardInner>);
 
 impl SpanGuard {
     #[inline]
@@ -111,11 +111,11 @@ impl SpanGuard {
 }
 
 pub struct Entered<'a> {
-    guard: &'a SpanGuardInner,
+    guard: &'a GuardInner,
 }
 
 impl<'a> Entered<'a> {
-    fn new(span_guard: &'a SpanGuardInner) -> Self {
+    fn new(span_guard: &'a GuardInner) -> Self {
         SPAN_STACK
             .with(|spans| unsafe { (&mut *spans.get()).push(std::mem::transmute(span_guard)) });
         Entered { guard: span_guard }

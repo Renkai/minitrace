@@ -11,7 +11,7 @@ pub struct Instrumented<T> {
 impl<T: Sized> Instrument for T {}
 
 pub trait Instrument: Sized {
-    fn instrument(self, span: crate::SpanGuardInner) -> Instrumented<Self> {
+    fn instrument(self, span: crate::GuardInner) -> Instrumented<Self> {
         Instrumented {
             inner: self,
             span: crate::SpanGuard(Some(span)),
