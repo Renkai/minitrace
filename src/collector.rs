@@ -29,19 +29,29 @@ pub enum CollectorRx {
 
 impl CollectorRx {
     #[inline]
-    pub fn collect(self) -> Vec<crate::Span> {
+    pub fn iter(self) -> impl Iterator<Item=crate::Span> {
         match self {
-            CollectorRx::Void => vec![],
-            CollectorRx::Channel(c) => c.iter().collect(),
+            CollectorRx::Void => std::iter::empty(),
+            CollectorRx::Channel(c) => c.iter(),
         }
     }
 
     #[inline]
-    pub fn try_collect(&self) -> Vec<crate::Span> {
+    pub fn try_iter(&self) -> impl Iterator<Item=crate::Span> {
         match self {
-            CollectorRx::Void => vec![],
-            CollectorRx::Channel(c) => c.try_iter().collect(),
+            CollectorRx::Void => std::iter::empty(),
+            CollectorRx::Channel(c) => c.try_iter(),
         }
+    }
+
+    #[inline]
+    pub fn collect(self) -> Vec<crate::Span> {
+        self.iter().collect()
+    }
+
+    #[inline]
+    pub fn try_collect(&self) -> Vec<crate::Span> {
+        self.try_iter().collect()
     }
 }
 
